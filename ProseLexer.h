@@ -30,8 +30,8 @@ class Lexer {
 private:
     std::string source;
     size_t pos = 0;
-    int line = 0;
-    int column = 0;
+    int line = 1;
+    int column = 1;
 
     const std::unordered_set<std::string> keywords;
     const std::unordered_set<std::string> operators;

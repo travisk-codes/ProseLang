@@ -13,7 +13,7 @@ private:
     SymbolTable symbols;
 
     // Evaluate an AST node
-    int evaluate(std::shared_ptr<ASTNode> node);
+    double evaluate(std::shared_ptr<ASTNode> node);
 
 public:
     // Interpret the entire program (AST root node)

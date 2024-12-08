@@ -16,14 +16,14 @@ char Lexer::advance() {
         char c = source[pos++];
         if (c == '\n') {
             line++;
-            column = 0;
+            column = 1;  // Reset column to 1 on a new line
         }
         else {
-            column++;
+            column++;  // Increment column position
         }
         return c;
     }
-    return '\0';
+    return '\0';  // Return null character when end of string is reached
 }
 
 // Peeks at the current character without consuming it
@@ -63,20 +63,22 @@ Token Lexer::collectStringLiteral() {
 // Collects an operator or punctuation
 Token Lexer::collectOperatorOrPunctuation() {
     size_t start = pos - 1;  // Start of the current token
-    std::string value;
+    std::string value = source.substr(start, pos - start);
 
-    // Attempt to collect a multi-character operator or punctuation
-    while (pos <= source.size()) {
-        value = source.substr(start, pos - start + 1);
+    // Check for punctuation (like parentheses, colons, etc.)
+    if (punctuation.count(value)) {
+        return { TokenType::Punctuation, value, line, column };
+    }
 
+    // Check for multi-character operators first
+    while (pos < source.size()) {
         // Check for multi-character operators
         if (operators.count(value)) {
-            pos++;  // Consume the entire operator
-            column += value.length();
+            column += value.length();  // Move column position forward by the length of the operator
             return { TokenType::Operator, value, line, column };
         }
 
-        // If the next character is not alphabetic or punctuation, break
+        // If not a valid operator, check if the character is not part of an operator (like alphabetic or punctuation)
         if (!std::isalpha(source[pos]) && !std::ispunct(source[pos])) {
             break;
         }
@@ -84,14 +86,13 @@ Token Lexer::collectOperatorOrPunctuation() {
         pos++;  // Expand to the next character
     }
 
-    // If no operator matched, check for single-character punctuation
+    // Check for single-character operators (like '+', '-', etc.)
     value = source.substr(start, 1);
-    if (punctuation.count(value)) {
-        column++;
-        return { TokenType::Punctuation, value, line, column };
+    if (operators.count(value)) {
+        return { TokenType::Operator, value, line, column };
     }
 
-    // Unknown token fallback
+    // If no operator or punctuation matched, return Unknown
     return { TokenType::Unknown, value, line, column };
 }
 
@@ -111,7 +112,7 @@ std::string tokenToString(const Token& token) {
     std::string typeStr;
 
     switch (token.type) {
-    case TokenType::Keyword:        typeStr = "Keyword"; break;
+    case TokenType::Keyword:       typeStr = "Keyword"; break;
     case TokenType::Identifier:    typeStr = "Identifier"; break;
     case TokenType::Number:        typeStr = "Number"; break;
     case TokenType::StringLiteral: typeStr = "StringLiteral"; break;
@@ -133,7 +134,7 @@ std::vector<Token> Lexer::tokenize() {
     do {
         token = nextToken();
         tokens.push_back(token);
-        // std::cout << tokenToString(token) << std::endl;
+        //std::cout << tokenToString(token) << std::endl;
     } while (token.type != TokenType::EndOfFile);
     return tokens;
 }

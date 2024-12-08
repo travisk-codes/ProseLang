@@ -9,18 +9,17 @@
 
 // AST Node Types
 enum class ASTNodeType {
-    Function,
-    Identifier,
-    Assignment,
-    BinaryOperation,
-    Return,
-    Literal,
+    Function, // 0
+    Identifier, // 1
+    Assignment, // 2
+    BinaryOperation, // 3
+    Return, // 4
+    Literal, // 5
     IfStatement,
     WhileLoop,
     ForLoop,
-    Block,
+    Block, // 9
     PrintStatement,
-    // No new node type for parentheses since they only group expressions
 };
 
 // Abstract Syntax Tree Node
@@ -42,11 +41,12 @@ private:
     Token peek();
     Token consume(TokenType expectedType, const std::string& errorMessage);
     bool match(TokenType type);
+    int getPrecedence(const std::string& op) const;
 
     // Parsing functions
     std::shared_ptr<ASTNode> parseStatement();
     std::shared_ptr<ASTNode> parseExpressionOrAssignment();
-    std::shared_ptr<ASTNode> parseExpression(std::shared_ptr<ASTNode> left = nullptr);
+    std::shared_ptr<ASTNode> parseExpression(int precedence = 0);
     std::shared_ptr<ASTNode> parsePrimary();
     std::shared_ptr<ASTNode> parseBlock();
     std::shared_ptr<ASTNode> parseFunction();

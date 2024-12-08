@@ -31,6 +31,14 @@ bool Parser::match(TokenType type) {
     return false;
 }
 
+int Parser::getPrecedence(const std::string& op) const {
+    if (op == "*" || op == "/") return 3;   // Multiplication and division (higher precedence)
+    if (op == "+" || op == "-") return 2;   // Addition and subtraction (lower precedence)
+    if (op == ">" || op == "<" || op == ">=" || op == "<=" || op == "=") return 1; // Comparisons
+    if (op == "and" || op == "or") return 0;  // Logical operators (lowest precedence)
+    return -1;  // Unknown operators
+}
+
 // Parse the entire program
 std::shared_ptr<ASTNode> Parser::parseProgram() {
     return parseBlock();
@@ -47,6 +55,7 @@ std::shared_ptr<ASTNode> Parser::parseBlock() {
 
 // Parse a single statement
 std::shared_ptr<ASTNode> Parser::parseStatement() {
+
     if (peek().type == TokenType::Keyword) {
         const std::string& keyword = peek().value;
         if (keyword == "function") return parseFunction();
@@ -74,58 +83,21 @@ std::shared_ptr<ASTNode> Parser::parseExpressionOrAssignment() {
     }
 
     // If not an assignment, parse it as a general expression
-    return parseExpression(left);
+    return parseExpression();
 }
 
 // Parse an expression
-std::shared_ptr<ASTNode> Parser::parseExpression(std::shared_ptr<ASTNode> left) {
-    if (!left) left = parsePrimary(); // Parse the initial operand (literal, identifier)
+std::shared_ptr<ASTNode> Parser::parseExpression(int precedence) {
+    auto left = parsePrimary();
 
-    // Handle the "not" operator (highest precedence for logical negation)
-    if (peek().type == TokenType::Keyword && peek().value == "not") {
-        consume(TokenType::Keyword, "Expected 'not' operator.");
-        auto right = parsePrimary();
-        auto notOpNode = std::make_shared<ASTNode>(ASTNodeType::BinaryOperation, "not");
-        notOpNode->children.push_back(left);  // Left operand (will be negated)
-        notOpNode->children.push_back(right); // Right operand is parsed after "not"
-        left = notOpNode;  // Update left operand for negation
-    }
-
-
-    // Handle comparison operators (lower precedence)
-    while (peek().type == TokenType::Operator &&
-        (peek().value == "=" || peek().value == ">" || peek().value == "<" ||
-            peek().value == ">=" || peek().value == "<=")) {
-        Token op = consume(TokenType::Operator, "Expected a comparison operator.");
-        auto right = parsePrimary();
-        auto comparisonOpNode = std::make_shared<ASTNode>(ASTNodeType::BinaryOperation, op.value);
-        comparisonOpNode->children.push_back(left);
-        comparisonOpNode->children.push_back(right);
-        left = comparisonOpNode;  // Update left operand for chained comparisons
-    }
-
-    // Handle logical operators (and, or)
-    while (peek().type == TokenType::Operator &&
-        (peek().value == "and" || peek().value == "or")) {
-        Token op = consume(TokenType::Operator, "Expected a logical operator.");
-        auto right = parsePrimary();
-        auto logicalOpNode = std::make_shared<ASTNode>(ASTNodeType::BinaryOperation, op.value);
-        logicalOpNode->children.push_back(left);
-        logicalOpNode->children.push_back(right);
-        left = logicalOpNode;  // Update left operand for chained logical operations
-    }
-
-
-    // Handle arithmetic operators (highest precedence)
-    while (peek().type == TokenType::Operator &&
-        (peek().value == "+" || peek().value == "-" ||
-            peek().value == "*" || peek().value == "/")) {
-        Token op = consume(TokenType::Operator, "Expected an arithmetic operator.");
-        auto right = parsePrimary();
-        auto arithmeticOpNode = std::make_shared<ASTNode>(ASTNodeType::BinaryOperation, op.value);
-        arithmeticOpNode->children.push_back(left);
-        arithmeticOpNode->children.push_back(right);
-        left = arithmeticOpNode;  // Update left operand for chained arithmetic operations
+    while (peek().type == TokenType::Operator && getPrecedence(peek().value) >= precedence) {
+        Token op = consume(TokenType::Operator, "Expected an operator.");
+        int opPrecedence = getPrecedence(op.value);
+        auto right = parseExpression(opPrecedence + 1);  // Parse with higher precedence
+        auto binaryOpNode = std::make_shared<ASTNode>(ASTNodeType::BinaryOperation, op.value);
+        binaryOpNode->children.push_back(left);
+        binaryOpNode->children.push_back(right);
+        left = binaryOpNode;
     }
 
     return left;
@@ -140,6 +112,13 @@ std::shared_ptr<ASTNode> Parser::parsePrimary() {
 
     else if (peek().type == TokenType::Identifier) {
         return parseIdentifier();
+    }
+    else if (peek().type == TokenType::Keyword && peek().value == "not") {
+        consume(TokenType::Keyword, "Expected 'not'.");
+        auto right = parsePrimary();  // The operand to be negated
+        auto notNode = std::make_shared<ASTNode>(ASTNodeType::BinaryOperation, "not");
+        notNode->children.push_back(right);
+        return notNode;
     }
     else if (peek().type == TokenType::Keyword) {
         // Handle boolean literals

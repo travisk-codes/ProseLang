@@ -3,16 +3,22 @@
 #include <iostream>
 
 // Evaluate an AST Node
-int Interpreter::evaluate(std::shared_ptr<ASTNode> node) {
+double Interpreter::evaluate(std::shared_ptr<ASTNode> node) {
     switch (node->type) {
     case ASTNodeType::PrintStatement: {
-        int value = evaluate(node->children[0]);  // Evaluate the expression to print
+        double value = evaluate(node->children[0]);  // Evaluate the expression to print
         std::cout << value << std::endl;
         return value;
     }
 
     case ASTNodeType::Literal:
-        return std::stoi(node->value);  // Return the literal value (1 or 0 for booleans)
+        // Check if the literal can be interpreted as an integer or floating point
+        try {
+            return std::stod(node->value);  // Convert to double if it is a floating point number
+        }
+        catch (const std::invalid_argument&) {
+            return std::stoi(node->value);  // Fallback to integer if it's not a float
+        }
 
     case ASTNodeType::Identifier: {
         auto it = symbols.find(node->value);
@@ -30,8 +36,8 @@ int Interpreter::evaluate(std::shared_ptr<ASTNode> node) {
     }
 
     case ASTNodeType::BinaryOperation: {
-        auto left = evaluate(node->children[0]);
-        auto right = evaluate(node->children[1]);
+        double left = evaluate(node->children[0]);
+        double right = evaluate(node->children[1]);
 
         if (node->value == "+") return left + right;
         if (node->value == "-") return left - right;
@@ -46,10 +52,10 @@ int Interpreter::evaluate(std::shared_ptr<ASTNode> node) {
         if (node->value == "<") return left < right;
         if (node->value == ">=") return left >= right;
         if (node->value == "<=") return left <= right;
-        // Logical operators
-        if (node->value == "and") return left && right;
-        if (node->value == "or") return left || right;
-        if (node->value == "not") return !left;  // Negate the left operand using logical NOT (!)
+        // Logical operators (you may need to cast the result to `bool` for logical operators)
+        if (node->value == "and") return static_cast<bool>(left) && static_cast<bool>(right);
+        if (node->value == "or") return static_cast<bool>(left) || static_cast<bool>(right);
+        if (node->value == "not") return !static_cast<bool>(left);  // Negate the left operand using logical NOT (!)
         throw std::runtime_error("Unknown operator: " + node->value);
     }
 
@@ -60,6 +66,7 @@ int Interpreter::evaluate(std::shared_ptr<ASTNode> node) {
         throw std::runtime_error("Unsupported AST node type.");
     }
 }
+
 
 // Interpret the entire program
 void Interpreter::interpret(std::shared_ptr<ASTNode> program) {
